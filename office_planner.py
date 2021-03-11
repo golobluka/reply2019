@@ -7,7 +7,6 @@ input_file_contents = input_file.read()
 
 # Variables
 cost_of_terrain = {
-    '#': 9999,
     '~': 800,
     '*': 200,
     '+': 150,
