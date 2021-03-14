@@ -1,7 +1,9 @@
 from sys import argv
 import os
 
-map_name = "1_victoria_lake.txt"
+map_name = "4_manhattan.txt"
+results_map = "results"
+result_name = "result_" + map_name
 file_directory = os.path.dirname(__file__)
 
 # Variables
@@ -136,8 +138,7 @@ def generate_matrix(map_representation, active):
     return map_representation, new_active
 
 
-
-
+# Matrike posameznih strank. 
 matrices = {}
 for customer in customers_data.keys():
     new_map = []
@@ -150,10 +151,109 @@ for customer in customers_data.keys():
                 new_map[-1].append(element)
     matrices[customer] = new_map
 
-active = [(10, 19, customers_data[(10, 19)])] 
-matrix = matrices[(10, 19)]   
+for customer in customers_data.keys():
+    active = [(customer[0], customer[1], customers_data[customer])] 
+    matrix = matrices[customer]   
+
+    while active != []:
+        matrix, active = generate_matrix(matrix, active)  
+    #print_m(matrix)
 
 
-for iteration in range(1, 50):
-    matrix, active = generate_matrix(matrix, active)  
-print_m(matrix)        
+# Summing the resoults of all customer matrices
+sum_matrix = []
+positive_sum_matrix = []
+
+for row in range(height):
+    sum_matrix.append([0 for counter in range(width)])
+    positive_sum_matrix.append([0 for counter in range(width)])
+    for column in range(width):
+        if map_representation[row][column] == "#":
+            sum_matrix[row][column] = "#"
+            positive_sum_matrix[row][column] = "#"
+        else:
+            for customer in matrices.keys():
+                element = matrices[customer][row][column]
+
+                if isinstance(element, int):
+                    sum_matrix[row][column] += element
+                    if element > 0:
+                        positive_sum_matrix[row][column] += element
+
+#Deliteing the spotes where customers lie
+print("Generiranje_matrik")
+
+for customer in customers_data.keys():
+    sum_matrix[customer[1]][customer[0]] = None
+    positive_sum_matrix[customer[1]][customer[0]] = None
+
+#Finding optimal spots
+
+best_places = [None for counter in range(available_offices)]
+
+for row in range(height):
+    for column in range(width):
+        if (row, column) in [element for element in customers_data.keys()]:
+            pass
+        else:
+            element = positive_sum_matrix[row][column]
+            if isinstance(element, int):
+                for i, member in enumerate(best_places):
+                    if member == None or member[2] < element:
+                        best_places[i] = (column, row, element)
+                        break
+                    else:
+                        pass
+print("Seštevanje")
+
+# Generateing paths to customers
+
+def generate_paths(place):
+    #Auxiliary functions
+    def follow_trace(customer, end):
+        trace = ""
+        while end != customer:
+            matrix = matrices[customer]
+            possibilities = []
+            for direction in [(1,0, "R"), (0, 1, "D"), (-1, 0, "L"), (0, -1, "U")]:
+                x = end[0] + direction[0]
+                y = end[1] + direction[1]
+                if x > 0 and x < width and y > 0 and y < height:    
+                    if isinstance(matrix[y][x], str):
+                        matrix[y][x] = -1
+                    possibilities.append((x, y, direction[2], matrix[y][x]))
+            possibilities.sort(key=lambda x: x[3], reverse=True)
+
+            best_choice = possibilities[0]
+            trace = trace + best_choice[2]
+            end = (best_choice[0], best_choice[1])
+        
+        return trace
+       
+    #Main
+    list_of_paths = []
+    for customer in customers_data.keys():
+        if isinstance(matrices[customer][place[1]][place[0]], int):
+            if matrices[customer][place[1]][place[0]] > 0:
+                trace = follow_trace(customer, place)
+                list_of_paths.append(trace)
+    return list_of_paths
+
+path_dictionary = {}
+for place in best_places:
+        
+    list_of_paths = generate_paths(place)
+    path_dictionary[place] = list_of_paths
+
+print("Iskanje poti.")
+
+# Generate output text file
+
+with open(os.path.join(file_directory, results_map, result_name), "w") as file:
+    for office in path_dictionary.keys():
+        for path in path_dictionary[office]:
+            text = str(office[0]) + " " + str(office[1]) + " " + path + "\n"
+            file.write(text)
+
+
+
